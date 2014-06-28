@@ -1,0 +1,105 @@
+if myHero.charName ~= "Nasus" then return end
+
+require 'SOW'
+require "VPrediction"
+
+local ts
+local Menu
+local VP = nil
+
+function OnLoad()
+	ts = TargetSelector(TARGET_LOW_HP, 600)
+	enemyMinions = minionManager(MINION_ENEMY, 600, myHero, MINION_SORT_MAXHEALTH_DEC)
+	range = 600
+	
+	Menu = scriptConfig("Nasus", "vit")
+	VP = VPrediction()
+	Orbwalker = SOW(VP)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Orbwalker]", "SOWorb")
+	Orbwalker:LoadToMenu(Menu.SOWorb)
+	
+	Menu:addParam("combo", "Combo mode!", SCRIPT_PARAM_ONKEYDOWN, false, 32)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Draws]", "drawings")
+	Menu.drawings:addParam("drawE", "Draw E Range", SCRIPT_PARAM_ONOFF, true)
+	Menu.drawings:addParam("drawW", "Draw W Range", SCRIPT_PARAM_ONOFF, true)
+	
+	Menu:addSubMenu("["..myHero.charName.." - Farm]", "farm")
+	Menu.farm:addParam("LastHit", "Q Last Hit", SCRIPT_PARAM_ONKEYDOWN, false, GetKey("X"))
+	Menu.farm:addParam("LaneClear", "LaneClear with E", SCRIPT_PARAM_ONKEYDOWN, false, GetKey("V"))
+	
+	
+	
+	
+end
+
+function OnTick()
+	ts:update()
+	enemyMinions:update()
+
+	if Menu.farm.LastHit then
+		LastHit()
+	end
+	
+	if Menu.farm.LaneClear then
+		LaneClear()
+	end
+	
+	if ts.target ~= nil and ValidTarget(ts.target) and Menu.combo then
+		if myHero:CanUseSpell(_W) == READY and ValidTarget(ts.target, 600) then
+			CastSpell(_W, ts.target)
+		end
+		
+		if myHero:CanUseSpell(_E) == READY and ValidTarget(ts.target, 650) then
+			CastSpell(_E, ts.target.x,ts.target.z)
+		end
+		
+		if myHero:CanUseSpell(_Q) == READY and ValidTarget(ts.target, 125) then
+			CastSpell(_Q)
+		end
+		
+		if myHero.health < (myHero.maxHealth*0.4) then
+			if myHero:CanUseSpell(_R) then
+				CastSpell(_R)
+			end
+		end
+	end
+end
+
+function LastHit()
+	for i, minion in pairs(enemyMinions.objects) do
+		if minion ~= nil and ValidTarget(minion, range) then
+			if getDmg("Q", minion, myHero) >= minion.health and myHero:CanUseSpell(_Q) == READY then
+				CastSpell(_Q)
+			end
+		end
+	end
+end
+
+function LaneClear()
+	for i, minion in pairs(enemyMinions.objects) do
+		if minion ~= nil and ValidTarget(minion, range) then
+			if myHero:CanUseSpell(_E) == READY then
+				CastSpell(_E, minion.x, minion.z)
+			end
+			
+			if getDmg("Q", minion, myHero) >= minion.health then
+				if myHero:CanUseSpell(_Q) == READY then
+					CastSpell(_Q)
+				end
+			end
+		end
+	end
+end
+	
+
+function OnDraw()
+	if Menu.drawings.drawE then
+		DrawCircle(myHero.x, myHero.y, myHero.z, 650, 0xE12566)
+	end
+	
+	if Menu.drawings.drawW then
+		DrawCircle(myHero.x, myHero.y, myHero.z, 600, 0xEA3737)
+	end
+end
